@@ -34,13 +34,16 @@ app.post("/register", async (req, res) => {
   const findUserQuery = `SELECT * FROM user WHERE username = '${username}'`;
   const selectedUser = await db.get(findUserQuery);
   if (password.length < 5) {
+    res.status(400);
     res.send("Password is too short");
   } else if (selectedUser === undefined) {
     const registerQuery = `INSERT INTO user (username,name , password, gender, location)
         VALUES( '${username}',	'${name}', '${hashedPassword}', '${gender}', '${location}');`;
     await db.run(registerQuery);
+    res.status(200);
     res.send("User created successfully");
   } else {
+    res.status(400);
     res.send("User already exists");
   }
 });
@@ -51,14 +54,15 @@ app.post("/login", async (req, res) => {
   const getUserQuery = `SELECT * FROM user WHERE username = '${username}';`;
   const dbUser = await db.get(getUserQuery);
   if (dbUser === undefined) {
-    res.status = 400;
+    res.status(400);
     res.send("Invalid user");
   } else {
     const isPasswordMatched = await bcrypt.compare(password, dbUser.password);
     if (isPasswordMatched) {
-      res.status = 200;
+      res.status(200);
       res.send("Login success!");
     } else {
+      res.status(400);
       res.send("Invalid password");
     }
   }
@@ -68,22 +72,23 @@ app.post("/login", async (req, res) => {
 app.put("/change-password", async (req, res) => {
   const { username, oldPassword, newPassword } = req.body;
   if (newPassword.length < 5) {
-    res.status = 400;
+    res.status(400);
     res.send("Password is too short");
   }
   const bringUserQuery = `SELECT * FROM user WHERE username = '${username}';`;
   const dbUser = await db.get(bringUserQuery);
   const isPasswordMatched = await bcrypt.compare(oldPassword, dbUser.password);
   if (isPasswordMatched) {
-    const hashedPassword = bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
     const changePasswordQuery = `UPDATE user
                 SET password = '${hashedPassword}'
                 WHERE
                     username = '${username}';`;
     await db.run(changePasswordQuery);
+    res.status(200);
     res.send("Password updated");
   } else {
-    res.status = 400;
+    res.status(400);
     res.send("Invalid current password");
   }
 });
